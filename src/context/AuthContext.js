@@ -1,21 +1,21 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'; // Ensure useCallback is imported
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext(null);
 
-// Define API_BASE_URL outside the component, or ensure it's globally accessible
-// as it's a constant, it won't change, so React won't complain if it's not in deps
-// IF it's declared INSIDE AuthProvider, then it needs useCallback.
-// Let's assume it's defined globally or imported, as per your previous discussion.
+// Define API_BASE_URL outside the component, as it's a constant.
+// It should not be in the useCallback's dependency array if it's truly constant.
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true); // Added loading state for auth check
+    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    // Memoize the checkAuthStatus function if it's used in useEffect
+    // Memoize the checkAuthStatus function.
+    // API_BASE_URL is a constant, so it's not a dependency.
+    // setLoading and setUser are React guarantees stable, so they don't need to be explicitly listed either.
     const checkAuthStatus = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (token) {
@@ -31,34 +31,31 @@ export const AuthProvider = ({ children }) => {
                 setUser(null);
             }
         }
-        setLoading(false); // Set loading to false after check
-    }, [API_BASE_URL]); // <--- Add API_BASE_URL here because checkAuthStatus uses it.
-                         // It's a constant, so this effectively means it only runs once.
+        setLoading(false);
+    }, []); // <--- Removed API_BASE_URL from dependencies
 
-    // This is likely the useEffect at line 32 that Netlify is complaining about
+    // This useEffect will run once when the component mounts
     useEffect(() => {
         checkAuthStatus();
-    }, [checkAuthStatus]); // <--- dependency should be checkAuthStatus (which is memoized)
+    }, [checkAuthStatus]); // `checkAuthStatus` is stable due to `useCallback`
 
     const login = async (username, password) => {
         try {
             const response = await axios.post(`${API_BASE_URL}/auth/login`, { username, password });
             localStorage.setItem('token', response.data.token);
-            setUser(response.data.user); // Assuming user data is returned
+            setUser(response.data.user);
             navigate('/dashboard');
         } catch (error) {
             console.error("Login failed:", error.response?.data?.message || error.message);
-            throw error; // Re-throw to be caught by login form
+            throw error;
         }
     };
 
     const signup = async (username, password) => {
         try {
-            const response = await axios.post(`${API_BASE_URL}/auth/signup`, { username, password });
-            // Optionally auto-login after signup, or navigate to login page
-            // localStorage.setItem('token', response.data.token);
-            // setUser(response.data.user);
-            navigate('/login'); // Navigate to login after successful signup
+            // Option A: Removed 'response' assignment as it's not used
+            await axios.post(`${API_BASE_URL}/auth/signup`, { username, password });
+            navigate('/login');
         } catch (error) {
             console.error("Signup failed:", error.response?.data?.message || error.message);
             throw error;
@@ -73,13 +70,12 @@ export const AuthProvider = ({ children }) => {
 
     const value = {
         user,
-        loading, // Provide loading state
+        loading,
         login,
         logout,
         signup
     };
 
-    // Only render children when auth check is complete
     if (loading) {
         return <div>Loading authentication...</div>;
     }
