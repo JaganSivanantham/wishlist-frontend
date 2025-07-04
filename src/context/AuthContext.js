@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
 
     // In src/context/AuthContext.js
 // and in src/api/wishlistApi.js
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://wishlist-api-l75s.onrender.com/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
 
     useEffect(() => {
         const validateToken = async () => {
