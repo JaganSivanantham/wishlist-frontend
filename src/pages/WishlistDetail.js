@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useCallback } from 'react';
+// import { useCallback } from 'react'; // Removed duplicate import, already imported above
 import wishlistApi from '../api/wishlistApi';
 
 const WishlistDetail = () => {
@@ -19,15 +19,9 @@ const WishlistDetail = () => {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteMessage, setInviteMessage] = useState('');
 
-    useEffect(() => {
-        if (!user) {
-            navigate('/login');
-            return;
-        }
-        fetchWishlist();
-    }, [id, user, navigate]);
-
-    const fetchWishlist = async () => {
+    // Wrap fetchWishlist in useCallback.
+    // Its dependencies are 'id' (from useParams), and state setters (which are stable).
+    const fetchWishlist = useCallback(async () => {
         setLoading(true);
         try {
             const response = await wishlistApi.getWishlistById(id);
@@ -38,7 +32,16 @@ const WishlistDetail = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, setLoading, setWishlist, setError]); // Dependencies for useCallback: 'id' and state setters
+
+    // useEffect hook to fetch wishlist data when relevant dependencies change
+    useEffect(() => {
+        if (!user) {
+            navigate('/login');
+            return;
+        }
+        fetchWishlist();
+    }, [id, user, navigate, fetchWishlist]); // <--- fetchWishlist is now correctly added here
 
     const handleAddOrUpdateProduct = async (e) => {
         e.preventDefault();
@@ -430,7 +433,7 @@ const styles = {
         cursor: 'pointer',
         fontSize: '0.85em',
     },
-        inviteContainer: {
+    inviteContainer: {
         backgroundColor: '#e9f7ef', // Light green background to stand out
         padding: '20px',
         borderRadius: '8px',
